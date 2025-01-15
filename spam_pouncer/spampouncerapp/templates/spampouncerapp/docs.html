@@ -68,13 +68,27 @@
     </div>
 
     <div class="endpoint">
-        <h3>Classify Text</h3>
-        <p><code>POST /classify-text/</code></p>
-        <p>Classifies the provided text for spam detection. Requires valid token.</p>
+        <h3>Set User Score</h3>
+        <p><code>POST /set-user-score/</code></p>
+        <p>Sets or updates the trust score for a specific user ID. Creates a new user if they don't exist. Requires valid token.</p>
         <pre>
 {
     "token": "your_token_here",
-    "text": "text_to_classify"
+    "user_id": 123,
+    "score": 42
+}
+        </pre>
+    </div>
+
+    <div class="endpoint">
+        <h3>Classify Text</h3>
+        <p><code>POST /classify-text/</code></p>
+        <p>Classifies the provided text for spam detection. If user_id is provided, updates their trust score. Requires valid token.</p>
+        <pre>
+{
+    "token": "your_token_here",
+    "text": "text_to_classify",
+    "user_id": 123  // Optional
 }
         </pre>
     </div>
