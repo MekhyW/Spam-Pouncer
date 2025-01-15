@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spam Pouncer API Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .endpoint {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spam Pouncer API Documentation</h1>
+    
+    <div class="warning">
+        ⚠️ This documentation is under construction. More details will be added soon.
+    </div>
+
+    <h2>API Endpoints</h2>
+
+    <div class="endpoint">
+        <h3>Verify Token</h3>
+        <p><code>POST /verify-token/</code></p>
+        <p>Verifies if the provided authorization token is valid.</p>
+        <pre>
+{
+    "token": "your_token_here"
+}
+        </pre>
+    </div>
+
+    <div class="endpoint">
+        <h3>Get User Score</h3>
+        <p><code>POST /get-user-score/</code></p>
+        <p>Retrieves the trust score for a specific user ID. Requires valid token.</p>
+        <pre>
+{
+    "token": "your_token_here",
+    "user_id": 123
+}
+        </pre>
+    </div>
+
+    <div class="endpoint">
+        <h3>Classify Text</h3>
+        <p><code>POST /classify-text/</code></p>
+        <p>Classifies the provided text for spam detection. Requires valid token.</p>
+        <pre>
+{
+    "token": "your_token_here",
+    "text": "text_to_classify"
+}
+        </pre>
+    </div>
+
+    <h2>Database Schema</h2>
+
+    <div class="endpoint">
+        <h3>Account Model</h3>
+        <pre>
+class Account:
+    user_id: Integer (Primary Key)
+    name: String (max_length=255)
+    trust_score: Integer
+    num_updates: Integer
+        </pre>
+    </div>
+
+    <p><a href="/">← Back to main page</a></p>
+</body>
+</html>

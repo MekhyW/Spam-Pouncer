@@ -28,6 +28,20 @@
             color: red;
             margin-top: 5px;
         }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+            text-align: center;
+        }
+        .footer a {
+            margin: 0 10px;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -53,6 +67,12 @@
             <textarea id="text" placeholder="Enter text to classify"></textarea>
             <button onclick="classifyText()">Classify</button>
             <div id="classifyResult" class="result"></div>
+        </div>
+
+        <div class="footer">
+            <a href="/docs/" target="_blank">API Documentation</a>
+            <a href="https://github.com/MekhyW/Spam-Pouncer" target="_blank">GitHub Repository</a>
+            <a href="https://telegram.me/MekhyW" target="_blank">Contact</a>
         </div>
     </div>
 

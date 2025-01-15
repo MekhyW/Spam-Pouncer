@@ -11,6 +11,9 @@ load_dotenv()
 def index(request):
     return render(request, 'spampouncerapp/index.html')
 
+def docs(request):
+    return render(request, 'spampouncerapp/docs.html')
+
 @csrf_exempt
 def verify_token(request):
     if request.method == 'POST':
