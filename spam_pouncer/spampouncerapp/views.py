@@ -60,6 +60,7 @@ def set_user_score(request):
         try:
             account = Account.objects.get(user_id=user_id)
             account.trust_score = score
+            account.name = name
             account.num_updates += 1
             account.save()
         except Account.DoesNotExist:
@@ -81,6 +82,7 @@ def classify_text(request):
             try:
                 account = Account.objects.get(user_id=user_id)
                 account.trust_score += score
+                account.name = name
                 account.num_updates += 1
                 account.save()
             except Account.DoesNotExist:
