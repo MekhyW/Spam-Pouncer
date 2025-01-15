@@ -55,6 +55,7 @@ def set_user_score(request):
         if not check_token(token):
             return JsonResponse({'error': 'Invalid token'}, status=401)
         user_id = data.get('user_id')
+        name = data.get('name')
         score = data.get('score')
         try:
             account = Account.objects.get(user_id=user_id)
@@ -62,7 +63,7 @@ def set_user_score(request):
             account.num_updates += 1
             account.save()
         except Account.DoesNotExist:
-            Account.objects.create(user_id=user_id, trust_score=score, num_updates=1)
+            Account.objects.create(user_id=user_id, name=name, trust_score=score, num_updates=1)
         return JsonResponse({'score': score})
 
 @csrf_exempt
@@ -71,6 +72,7 @@ def classify_text(request):
         data = json.loads(request.body)
         token = data.get('token')
         user_id = data.get('user_id')
+        name = data.get('name')
         if not check_token(token):
             return JsonResponse({'error': 'Invalid token'}, status=401)
         text = data.get('text')
@@ -82,7 +84,7 @@ def classify_text(request):
                 account.num_updates += 1
                 account.save()
             except Account.DoesNotExist:
-                Account.objects.create(user_id=user_id, trust_score=score, num_updates=1)
+                Account.objects.create(user_id=user_id, name=name, trust_score=score, num_updates=1)
             except Exception as e:
                 return JsonResponse({'error': str(e)}, status=500)
         return JsonResponse({'score': score})
