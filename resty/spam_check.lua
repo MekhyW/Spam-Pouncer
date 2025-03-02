@@ -25,6 +25,7 @@ if isDanger then
         class=class,
         breakdown=breakdown
     })))
+     ngx.exit(ngx.HTTP_OK)
 end
 
 ngx.status = ngx.HTTP_OK
