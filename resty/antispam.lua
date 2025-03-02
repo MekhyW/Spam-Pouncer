@@ -1,12 +1,8 @@
-local DEFAULT_PRIORITY = 0
-if not DEFAULT_PRIORITY then 
-	DEFAULT_PRIORITY = 0
-end
 local antispam = {
-	priority = DEFAULT_PRIORITY - 10001200,
+	
 }
 
-local utf8 = require("utf9")
+local utf8 = require("utf8")
 
 function antispam.classifyMessageDanger(msg) 
 	local emojiPercent = antispam.getCustomEmojiPercentage(msg)
@@ -429,7 +425,7 @@ end
 function antispam.frame()
 
 end
-
+--[[
 
 local res = io.open("result.json", "r")
 local dt = res:read("*a")
@@ -475,5 +471,5 @@ for i,msg in pairs(data.messages) do
 		end
 	end
 end
-
+]]
 return antispam
