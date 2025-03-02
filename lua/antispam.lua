@@ -6,20 +6,20 @@ local antispam = {
 	priority = DEFAULT_PRIORITY - 10001200,
 }
 
-local utf8 = require("utf8")
+local utf8 = require("utf9")
 
 function antispam.classifyMessageDanger(msg) 
 	local emojiPercent = antispam.getCustomEmojiPercentage(msg)
 
-	local str = (msg.text or msg.description or msg.caption) or ""
-	str = antispam.remove_accents(str)
+	local original_str = (msg.text or msg.description or msg.caption) or ""
+	local str = antispam.remove_accents(original_str)
 
 	local strLower = str:lower()
 
 	local hasBotMention = antispam.hasBotMention(strLower)
-	local hasCrypto = antispam.hasCryptoMention(str, strLower, emojiPercent)
+	local hasCrypto = antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local hasIllegal = antispam.hasIllegalStuff(strLower)
-	local hasScam = antispam.hasActualScam(strLower)
+	local hasScam = antispam.hasActualScam(strLower, original_str)
 
 	local result = "Emoji percent: "..(emojiPercent*100).."\n"..
 					"MentionBot: "..hasBotMention.."\n".. 
@@ -53,12 +53,20 @@ function antispam.checkInnerElement(elem, strLower)
 					return 1
 				end
 			else 
+				local useStr = strLower
+				if orElem == contains_link then  
+					useStr = strLower
+				end
 				if orElem(strLower) then  
 					return 1
 				end
 			end
 		end
 	else 
+		local useStr = strLower
+		if elem == contains_link then  
+			useStr = strLower
+		end
 		local res = elem(strLower)
 		if not res or res == 0 then   
 			return 0
@@ -66,7 +74,8 @@ function antispam.checkInnerElement(elem, strLower)
 	end
 	return 1
 end
-function antispam.checkScamSetList(strLower)
+
+function antispam.checkScamSetList(strLower, original_str)
 	local setList = {
 		{"[^%w]profit[^%w]", "[^%w]contact[^%w]", antispam.hasPriceMention},
 		{"[^%w]earning[^%w]", "[^%w]effortless", antispam.hasPriceMention},
@@ -93,7 +102,7 @@ function antispam.checkScamSetList(strLower)
 	return 0
 end
 
-function antispam.hasActualScam(strLower)
+function antispam.hasActualScam(strLower, original_str)
 	local phone = antispam.hasPhoneNumber(strLower)
 	local money = antispam.hasPriceMention(strLower)
 	local scamMentions = {
@@ -125,12 +134,12 @@ function antispam.hasActualScam(strLower)
 	end
 
 	if scamCount <= 3 then  
-		return antispam.checkScamSetList(strLower)
+		return antispam.checkScamSetList(strLower, original_str)
 	end
 	if money and phone then  
 		return 1
 	else 
-		return scamCount > 6 and 1 or antispam.checkScamSetList(strLower)
+		return scamCount > 6 and 1 or antispam.checkScamSetList(strLower, original_str)
 	end
 end
 function antispam.hasIllegalStuff(strLower)
@@ -215,11 +224,17 @@ function antispam.remove_accents(str)
     return a
 end
 
-local function contains_link(str)
-    local url_pattern = "https?://[%w-_%.%?%.:/%+=&]+"
-    local domain_pattern = "[%w-_]+%.[%w]+[%w%.]*"
+local function contains_link(s)
+    -- Pattern to match URLs with http/https
+    local pattern1 = "https?://[%w-_%.%?%.:/%+=&]+"
+    -- Pattern to match URLs without http/https (e.g., example.com)
+    local pattern2 = "[%w-_]+%.[%a]+[%w-_%.%?%.:/%+=&]*"
     
-    return str:match(url_pattern) ~= nil or str:match(domain_pattern) ~= nil
+    if string.find(s, pattern1) or string.find(s, pattern2) then
+        return true
+    else
+        return false
+    end
 end
 
 
@@ -257,7 +272,7 @@ function antispam.hasPriceMention(strLower)
     return false
 end
 
-function antispam.hasCryptoMention(str, strLower, emojiPercent)
+function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local cryptoKeywords = {
 		"claim",
 		"airdrop",
@@ -271,6 +286,7 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent)
 	for a, kw in pairs(cryptoKeywords) do  
 		if strLower:find("([^%w ]-)"..kw.."([^%w ]-)") then  
 			hasAnuncio = true
+			print("yey")
 			break
 		end
 	end
@@ -280,11 +296,10 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent)
 	end
 
 	if str:match("[^%w]%$([A-Z]-)[^%w]") then 
-
 		return 1
 	end
 
-	if contains_link(strLower) then  
+	if contains_link(original_str) then  
 		return 1
 	end
 
@@ -415,12 +430,12 @@ function antispam.frame()
 
 end
 
---[[
+
 local res = io.open("result.json", "r")
 local dt = res:read("*a")
 res:close()
 
-local json = require("cjson")
+local json = require("json")
 local data = json.decode(dt)
 
 
@@ -460,6 +475,5 @@ for i,msg in pairs(data.messages) do
 		end
 	end
 end
-]]
 
 return antispam
