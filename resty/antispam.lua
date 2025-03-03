@@ -13,13 +13,13 @@ function antispam.classifyMessageDanger(msg)
 	local strLower = str:lower()
 
 	local hasBotMention = antispam.hasBotMention(strLower)
-	local hasCrypto = antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
+	local hasCrypto, info = antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local hasIllegal = antispam.hasIllegalStuff(strLower)
 	local hasScam = antispam.hasActualScam(strLower, original_str)
 
 	local result = "Emoji percent: "..(emojiPercent*100).."\n"..
 					"MentionBot: "..hasBotMention.."\n".. 
-					"hasCrypto: "..hasCrypto.."\n".. 
+					"hasCrypto: "..hasCrypto..(info and (" "..info) or "").."\n".. 
 					"hasIllegal: "..hasIllegal.."\n" ..
 					"hasScam: "..hasScam.."\n" 
 	if hasCrypto == 1 then 
@@ -220,15 +220,33 @@ function antispam.remove_accents(str)
     return a
 end
 
+function is_valid_url(url)
+    -- Pattern to match URLs with or without protocol
+    local pattern = "^((https?://)?[%w-_%.]+%.[%w-_%.]+[%w-_%./?%%&=]*)$"
+    
+    -- Check if the string matches the URL pattern
+    if url:match(pattern) then
+        return true
+    else
+        return false
+    end
+end
+
 local function contains_link(s)
     -- Pattern to match URLs with http/https
     local pattern1 = "https?://[%w-_%.%?%.:/%+=&]+"
     -- Pattern to match URLs without http/https (e.g., example.com)
     local pattern2 = "[%w-_]+%.[%a]+[%w-_%.%?%.:/%+=&]*"
     
-    if string.find(s, pattern1) or string.find(s, pattern2) then
+
+    if string.find(s, pattern1) then
         return true
     else
+    	local from,to = string.find(s, pattern2)
+    	if from then   
+    		local url = s:sub(from, to)
+    		return is_valid_url(url)
+    	end
         return false
     end
 end
@@ -278,11 +296,15 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 
 	strLower = " "..strLower.." "
 	str = " "..str.." "
+	local hasMentionOf = ""
 	local hasAnuncio = false
 	for a, kw in pairs(cryptoKeywords) do  
-		if strLower:find("([^%w ]-)"..kw.."([^%w ]-)") then  
+		local e,b = strLower:find("([^%w ])"..kw.."([^%w ])")
+		if e then  
 			hasAnuncio = true
-			print("yey")
+			hasMentionOf = "Has mention of '"..kw.."'"
+			
+			print('['..strLower:sub(e-5, b+5)..']')
 			break
 		end
 	end
@@ -292,11 +314,7 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	end
 
 	if str:match("[^%w]%$([A-Z]-)[^%w]") then 
-		return 1
-	end
-
-	if contains_link(original_str) then  
-		return 1
+		return 1, hasMentionOf.." and mentions directly an crypto currency"
 	end
 
 	local btcstuff = {
@@ -314,12 +332,17 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	
 	for a, kw in pairs(btcstuff) do  
 		if strLower:find("[^%w]"..kw.."[^%w]") then  
-			return 1
+			return hasMentionOf.." and mentions '"..kw.."'"
 		end
 	end
 
 	if emojiPercent > 0.7 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
-		return 1
+		return 1, hasMentionOf.." and has emoji or bot mention"
+	end
+
+	if contains_link(original_str) then  
+		
+		return 1,  hasMentionOf.." and Has link"
 	end
 
 	return 0
@@ -371,9 +394,14 @@ function antispam.onTextReceive(msg)
 		local isSpam, class, breakdown = antispam.classifyMessageDanger(msg)
 		if isSpam then
 			print("Encontrado spam do tipo "..class.."\n"..breakdown)
+			local str = (msg.text or msg.description or msg.caption)
+			print(str)
 			local chatid = msg.chat and msg.chat.id or msg.from.id
-			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown)
-			bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid)
+			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			if not res.ok then  
+				bot.sendMessage(5146565303, "Spam found: \n"..str)
+			end
 		end
 	end
 end
@@ -382,10 +410,15 @@ function antispam.onPhotoReceive(msg)
 	if msg.from then
 		local isSpam, class, breakdown = antispam.classifyMessageDanger(msg)
 		if isSpam then
-			local chatid = msg.chat and msg.chat.id or msg.from.id
 			print("Encontrado spam do tipo "..class.."\n"..breakdown)
-			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown)
-			bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			local str = (msg.text or msg.description or msg.caption)
+			print(str)
+			local chatid = msg.chat and msg.chat.id or msg.from.id
+			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid )
+			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			if not res.ok then  
+				bot.sendMessage(5146565303, "Spam found: \n"..str)
+			end
 		end
 	end
 end
@@ -394,14 +427,18 @@ function antispam.onDocumentReceive(msg)
 	if msg.from then
 		local isSpam, class, breakdown = antispam.classifyMessageDanger(msg)
 		if isSpam then
-			local chatid = msg.chat and msg.chat.id or msg.from.id
 			print("Encontrado spam do tipo "..class.."\n"..breakdown)
-			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown)
-			bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			local str = (msg.text or msg.description or msg.caption)
+			print(str)
+			local chatid = msg.chat and msg.chat.id or msg.from.id
+			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid)
+			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
+			if not res.ok then  
+				bot.sendMessage(5146565303, "Spam found: \n"..str)
+			end
 		end
 	end
 end
-
 
 function antispam.loadCommands()
 end
@@ -425,6 +462,142 @@ end
 function antispam.frame()
 
 end
+
+local isDanger, class, breakdown = antispam.classifyMessageDanger({text=[[3 de março na história
+
+Mitologia nórdica
+dia de Aegir, deus teutônico dos mares
+
+Internacional 
+Dia Mundial da Vida Selvagem (2014)
+
+Japão 
+Hinamatsuri ou "Dia das Meninas" 
+
+Austrália
+Dia do Trabalho
+ 
+Bulgária
+Dia da Independência
+
+Malawi 
+Dia dos Mártires 
+ 
+Brasil 
+Aniversário da fundação de:
+Alagoa - MG 
+Autazes - AM 
+Bandeira - MG 
+Canaã - MG 
+Carbonita - MG 
+Chapada do Norte - MG 
+Claro dos Poções - MG 
+Mirabela - MG 
+Nova União - MG 
+Pão de Açúcar - AL 
+Ribeirão do Largo - BA 
+Santa Rita de Ibitipoca - MG 
+Varzelândia - MG 
+
+1872 — Império do Brasil: A questão religiosa foi um conflito e enfrentamento entre a Igreja Católica, o Imperador e a Maçonaria, acabou se tornando uma questão de Estado, gerando a decisão do estado à parte das religiões.
+1891 — Criada a Floresta Nacional de Shoshone como a primeira floresta nacional dos Estados Unidos e do mundo.
+1904 — Kaiser Guilherme II da Alemanha torna-se a primeira pessoa a fazer uma gravação sonora de um documento político, usando o cilindro fonográfico de Thomas Edison.
+1910 — Fundação Rockefeller: John D. Rockefeller, Jr. anuncia sua aposentadoria da administração de seus negócios para que possa dedicar todo seu tempo à filantropia.
+1913 — Milhares de mulheres marcham, entre 5 000 e 10 000 manifestantes, na Procissão do Sufrágio Feminino em Washington, D.C.
+1923 – A revista Time é publicada pela primeira vez.
+1938 — Descoberta de petróleo na Arábia Saudita.
+1969 — Programa Apollo: a NASA lança a Apollo 9 para testar o módulo lunar.
+1997 — Inaugurada a mais alta estrutura do Hemisfério sul (328 metros), Sky Tower, no centro de Auckland, Nova Zelândia, após dois anos e meio de construção.
+2005 — Steve Fossett torna-se a primeira pessoa a realizar uma circum-navegação aérea solo ao redor do mundo sem paradas ou reabastecimento.
+2017 — Nintendo lança em todo o mundo o console de videogame híbrido Nintendo Switch.
+
+Nasceram neste dia…
+
+1847 — Alexander Graham Bell, engenheiro e acadêmico anglo-americano (m. 1922).
+1974 — Juliana Martins, atriz brasileira. 
+2003 — Thomas Barbusca, ator estadunidense.
+
+Morreram neste dia…
+
+1883 — Antônio Joaquim Franco Velasco, pintor brasileiro (n. 1780).
+1964 — Mario Gatti, médico brasileiro (n. 1879).
+2023 — Emílio Pitta, ator brasileiro (n. 1943).
+
+
+
+
+
+https://www.facebook.com/100031795313593/posts/pfbid031U4JuS5dewtDDho3phGa3fbxggqtePDWgVw6xH95ecCCQCgAEdpotJZSNNCeq6PLl/3 de março na história
+
+Mitologia nórdica
+dia de Aegir, deus teutônico dos mares
+
+Internacional 
+Dia Mundial da Vida Selvagem (2014)
+
+Japão 
+Hinamatsuri ou "Dia das Meninas" 
+
+Austrália
+Dia do Trabalho
+ 
+Bulgária
+Dia da Independência
+
+Malawi 
+Dia dos Mártires 
+ 
+Brasil 
+Aniversário da fundação de:
+Alagoa - MG 
+Autazes - AM 
+Bandeira - MG 
+Canaã - MG 
+Carbonita - MG 
+Chapada do Norte - MG 
+Claro dos Poções - MG 
+Mirabela - MG 
+Nova União - MG 
+Pão de Açúcar - AL 
+Ribeirão do Largo - BA 
+Santa Rita de Ibitipoca - MG 
+Varzelândia - MG 
+
+1872 — Império do Brasil: A questão religiosa foi um conflito e enfrentamento entre a Igreja Católica, o Imperador e a Maçonaria, acabou se tornando uma questão de Estado, gerando a decisão do estado à parte das religiões.
+1891 — Criada a Floresta Nacional de Shoshone como a primeira floresta nacional dos Estados Unidos e do mundo.
+1904 — Kaiser Guilherme II da Alemanha torna-se a primeira pessoa a fazer uma gravação sonora de um documento político, usando o cilindro fonográfico de Thomas Edison.
+1910 — Fundação Rockefeller: John D. Rockefeller, Jr. anuncia sua aposentadoria da administração de seus negócios para que possa dedicar todo seu tempo à filantropia.
+1913 — Milhares de mulheres marcham, entre 5 000 e 10 000 manifestantes, na Procissão do Sufrágio Feminino em Washington, D.C.
+1923 – A revista Time é publicada pela primeira vez.
+1938 — Descoberta de petróleo na Arábia Saudita.
+1969 — Programa Apollo: a NASA lança a Apollo 9 para testar o módulo lunar.
+1997 — Inaugurada a mais alta estrutura do Hemisfério sul (328 metros), Sky Tower, no centro de Auckland, Nova Zelândia, após dois anos e meio de construção.
+2005 — Steve Fossett torna-se a primeira pessoa a realizar uma circum-navegação aérea solo ao redor do mundo sem paradas ou reabastecimento.
+2017 — Nintendo lança em todo o mundo o console de videogame híbrido Nintendo Switch.
+
+Nasceram neste dia…
+
+1847 — Alexander Graham Bell, engenheiro e acadêmico anglo-americano (m. 1922).
+1974 — Juliana Martins, atriz brasileira. 
+2003 — Thomas Barbusca, ator estadunidense.
+
+Morreram neste dia…
+
+1883 — Antônio Joaquim Franco Velasco, pintor brasileiro (n. 1780).
+1964 — Mario Gatti, médico brasileiro (n. 1879).
+2023 — Emílio Pitta, ator brasileiro (n. 1943).
+
+
+
+
+
+https://www.facebook.com/100031795313593/posts/pfbid031U4JuS5dewtDDho3phGa3fbxggqtePDWgVw6xH95ecCCQCgAEdpotJZSNNCeq6PLl/]]})
+		if isDanger then  
+			print("MESSAGE TYPE="..class)
+			print(breakdown)
+			print('----------------------------------------------')
+		end
+
 --[[
 
 local res = io.open("result.json", "r")
