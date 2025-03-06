@@ -1,9 +1,11 @@
 local antispam = {
 	
 }
+local utf8 = dofile("utf8.lua")
+
+
 
 local headRegexp = "([ \n^%w])"
-local utf8 = dofile("utf8.lua")
 
 local function printdbg(...)
 	if antispam.DEBUG then 
@@ -48,7 +50,6 @@ local function contains_link(s)
     -- Pattern to match URLs without http/https (e.g., example.com)
     local pattern2 = "[%w-_]+%.[%a]+[%w-_%.%?%.:/%+=&]*"
     
-
     if string.find(s, pattern1) then
         return true
     else
@@ -76,13 +77,13 @@ function antispam.classifyMessageDanger(msg)
 	local hasBotMention = antispam.hasBotMention(strLower)
 	local hasCrypto, info = antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local hasIllegal = antispam.hasIllegalStuff(strLower)
-	local hasScam = antispam.hasActualScam(strLower, original_str, emojiPercent)
+	local hasScam, infos = antispam.hasActualScam(strLower, original_str, emojiPercent)
 
 	local result = "Emoji percent: "..(emojiPercent*100).."\n"..
 					"MentionBot: "..hasBotMention.."\n".. 
 					"hasCrypto: "..hasCrypto..(info and (" "..info) or "").."\n".. 
 					"hasIllegal: "..hasIllegal.."\n" ..
-					"hasScam: "..hasScam.."\n" 
+					"hasScam: "..hasScam..(infos and (" "..infos) or "").."\n"
 	if hasCrypto == 1 then 
 		return true, "Cripto shit", result
 	end
@@ -98,42 +99,54 @@ function antispam.classifyMessageDanger(msg)
 	return false, "safe", result
 end
 
-function antispam.checkInnerElement(elem, strLower)
+function antispam.checkInnerElement(elem, strLower, original_str)
+	local info = ""
 	if type(elem) == 'string' then 
 		if not strLower:find(elem) then
 			return 0
 		end
+		info = info .. "Matched "..elem
 	elseif type(elem) == 'table' then 
 		for _, orElem in pairs(elem) do  
 			if type(orElem) == 'string' then 
 				if strLower:find(orElem) then 
-					return 1
+					return 1, orElem
 				end
 			else 
 				local useStr = strLower
 				if orElem == contains_link then  
-					useStr = strLower
+					useStr = original_str
 				end
 				if orElem(strLower) then  
-					return 1
+					return 1, orElem
 				end
 			end
 		end
 	else 
 		local useStr = strLower
 		if elem == contains_link then  
-			useStr = strLower
+			useStr = original_str
 		end
-		local res = elem(strLower)
+		local res = elem(useStr)
 		if not res or res == 0 then   
 			return 0
 		end
 	end
-	return 1
+	return 1, elem
 end
 
-function antispam.checkScamSetList(strLower, original_str, emojiPercent)
-	local setList = {
+
+local cryptoCollection = { 
+		{"[^%w]airdrop", "[^%w]crypto"},
+		{"airdrop", contains_link},
+		{{"[^%w]bitcoin", "[^%w]btc"}, "cashout"},
+		{"[^%w]nft", "[^%w]reward", antispam.hasPriceMention},
+		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", contains_link},
+
+	}
+
+
+local scamCollection = { 
 		{"[^%w]profit[^%w]", "[^%w]contact[^%w]", antispam.hasPriceMention},
 		{"[^%w]earning[^%w]", "[^%w]effortless", antispam.hasPriceMention},
 		{"[^%w]invest[^%w]", "[^%w]earn[^%w]", antispam.hasPriceMention},
@@ -148,25 +161,32 @@ function antispam.checkScamSetList(strLower, original_str, emojiPercent)
 		{"[^%w]fuck", "[^%w]hot", {"[^%w]join", "[^%w]link"}, {antispam.contains_link}},
 		{"[^%w]crypto", "[^%w]transaction", {"[^%w]free", "[^%w]buy"}, {antispam.contains_link}},
 		{"[^%w]dinheiro", "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
+		{"[^%w]seguidor", "[^%w]instagram", {"[^%w]venda", "[^%w]venta"}, {antispam.hasPriceMention}},
 	}
+
+function antispam.checkCollection(setList, strLower, original_str, emojiPercent)
 	strLower = " "..strLower.." "
+	
 	for a, set in pairs(setList) do  
 		local ok = 1
+		local info = "Matched collection "..a..": ["
 		for _, elem in pairs(set) do  
-			ok = antispam.checkInnerElement(elem, strLower)
+			
+			ok , match = antispam.checkInnerElement(elem, strLower, original_str)
+			info = info..tostring(match)..','
 			if ok == 0 then  
 				break
 			end
 		end
 		if ok == 1 then
-			return 1
+			return 1, info..']'
 		end
 	end
 
 	if emojiPercent > 0.65 and contains_link(original_str) and original_str:find("🫰") then 
-		return 1
+		return 1, "Emoji percent, found emoji and has link"
 	end
-	return 0
+	return 0, ""
 end
 
 function antispam.hasActualScam(strLower, original_str, emojiPercent)
@@ -194,20 +214,25 @@ function antispam.hasActualScam(strLower, original_str, emojiPercent)
 	}
 
 	strLower = " "..strLower.." "
+	local reason = ""
 	local scamCount = 0
 	for a, kw in pairs(scamMentions) do  
 		if strLower:find("[^%w]"..kw.."[^%w]") then  
+			reason = reason .. "Found '"..kw.."' "
 			scamCount = scamCount +1
 		end
 	end
 
 	if scamCount <= 3 then  
-		return antispam.checkScamSetList(strLower, original_str, emojiPercent)
+		return antispam.checkCollection(scamCollection, strLower, original_str, emojiPercent)
 	end
 	if money and phone then  
-		return 1
+		return 1, reason
 	else 
-		return scamCount > 6 and 1 or antispam.checkScamSetList(strLower, original_str, emojiPercent)
+		if scamCount >= 6 then  
+			return 1, reason
+		end
+		return antispam.checkCollection(scamCollection,strLower, original_str, emojiPercent)
 	end
 end
 function antispam.hasIllegalStuff(strLower)
@@ -273,6 +298,19 @@ local accent_map = {
         ['ç'] = 'c', ['Ç'] = 'C',
         ['ñ'] = 'n', ['Ñ'] = 'N',
         [".,;/\\|?!~*"] = " ",
+
+
+	    ["Т"] = "T",
+	    ["Е"] = "E",
+	    ["е"] = "e", 
+	    ["р"] = "r", 
+	    ["а"] = "a", 
+	    ["о"] = "o", 
+	    ["в"] = "v", 
+	    ["А"] = "a",  
+
+
+
 }
 
 function antispam.remove_accents(str)
@@ -288,7 +326,9 @@ function antispam.remove_accents(str)
         normalized_str = normalized_str .. char
     end
     normalized_str = antispam.fancyReplacer(normalized_str)
+
     local a = normalized_str:gsub("[\1-\8\11\12\14-\31\127-\255]", "") 
+
     return a
 end
 
@@ -330,18 +370,19 @@ end
 
 function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local cryptoKeywords = {
-		"claim",
 		"airdrop",
 		"btc",
 		"ton",
 		"usdt"
 	}
+	
 	strLower = " "..strLower.." "
 	str = " "..str.." "
 	local hasMentionOf = ""
 	local hasAnuncio = false
 	for a, kw in pairs(cryptoKeywords) do  
 		local e,b = strLower:find(headRegexp..kw..headRegexp)
+		
 		if e then  
 			hasAnuncio = true
 			hasMentionOf = "Has mention of '"..kw.."'"
@@ -349,43 +390,23 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 		end
 	end
 	if not hasAnuncio then  
+
 		if emojiPercent > 0.65 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
 			return 1, hasMentionOf.." and has emoji or bot mention"
 		end
-		return 0
+		return antispam.checkCollection(cryptoCollection, strLower, original_str, emojiPercent)
 	end
-	if str:match("[^%w]%$([A-Z]-)[^%w]") then 
+
+	if str:match("[^%w]%$([A-Z]+)[^%w]") then 
 		return 1, hasMentionOf.." and mentions directly an crypto currency"
 	end
 
-	local btcstuff = {
-		"btc",
-		"bitcoin",
-		"eth",
-		"crypto",
-		"wallet",
-		"ton",
-		"nft",
-		"token",
-		"tokens",
-		"usdt"
-	}
-	for a, kw in pairs(btcstuff) do  
-		if strLower:find("[^%w]"..kw.."[^%w]") then  
-			return 1, hasMentionOf.." and mentions '"..kw.."'"
-		end
-	end
-	printdbg("eeee")
 
 	if emojiPercent > 0.7 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
 		return 1, hasMentionOf.." and has emoji or bot mention"
 	end
 
-	if contains_link(original_str) then  
-		return 1,  hasMentionOf.." and Has link"
-	end
-
-	return 0
+	return antispam.checkCollection(cryptoCollection, strLower, original_str, emojiPercent)
 end
 
 function antispam.hasPhoneNumber(str)
