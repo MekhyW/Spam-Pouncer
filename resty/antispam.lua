@@ -63,6 +63,42 @@ local function contains_link(s)
 end
 
 
+function antispam.hasPriceMention(strLower)
+    local conditions = {
+        "([%d,%.]+)[%$€]",
+        "([%d,%.]+).?[%$€]",
+        "[%$€]([%d,%.]+)",
+        "[%$€]%s*([%d,%.]+)",
+        "([%d,%.]+)[%$€]",
+        "([%d,%.]+)%s*brl",
+        "([%d,%.]+)%s*r",
+
+        "[%$€]([%d,%.]+)",
+        "brl%s*([%d,%.]+)",
+        "r%$%s*([%d,%.]+)",
+        "r%s*([%d,%.]+)",
+
+
+        "usd%s*([%d,%.]+)",
+        "euro?%s*([%d,%.]+)",
+        "([%d,%.]+)%s*usd",
+        "([%d,%.]+)%s*euro?",
+        "%-%s([%d,%.]+)",
+        "$:%s*([%d,%.]+)",
+    
+    }
+
+    for a,c in pairs(conditions) do 
+        if strLower:match(c) and strLower:match("%d") then 
+            return true, c
+        end
+    end
+    
+    return false
+end
+
+
+
 function antispam.classifyMessageDanger(msg) 
 
 	local original_str = (msg.text or msg.description or msg.caption) or ""
@@ -114,21 +150,23 @@ function antispam.checkInnerElement(elem, strLower, original_str)
 				end
 			else 
 				local useStr = strLower
-				if orElem == contains_link then  
+				if orElem == contains_link  or orElem == antispam.hasPriceMention  then  
 					useStr = original_str
 				end
-				if orElem(strLower) then  
+				local res = orElem(useStr)
+				if res == 1 or res == true then  
 					return 1, orElem
 				end
 			end
 		end
+		return 0
 	else 
 		local useStr = strLower
-		if elem == contains_link then  
+		if elem == contains_link or elem == antispam.hasPriceMention then  
 			useStr = original_str
 		end
 		local res = elem(useStr)
-		if not res or res == 0 then   
+		if res ~= 1 and res ~= true then   
 			return 0
 		end
 	end
@@ -147,6 +185,7 @@ local cryptoCollection = {
 
 
 local scamCollection = { 
+		{"[^%w]girl", "[^%w]fuck", "[^%w]click", {antispam.contains_link}},
 		{"[^%w]profit[^%w]", "[^%w]contact[^%w]", antispam.hasPriceMention},
 		{"[^%w]earning[^%w]", "[^%w]effortless", antispam.hasPriceMention},
 		{"[^%w]invest[^%w]", "[^%w]earn[^%w]", antispam.hasPriceMention},
@@ -161,13 +200,13 @@ local scamCollection = {
 		{"[^%w]fuck", "[^%w]hot", {"[^%w]join", "[^%w]link"}, {antispam.contains_link}},
 		{"[^%w]crypto", "[^%w]transaction", {"[^%w]free", "[^%w]buy"}, {antispam.contains_link}},
 		{"[^%w]dinheiro", "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
-		{"[^%w]seguidor", "[^%w]instagram", {"[^%w]venda", "[^%w]venta"}, {antispam.hasPriceMention}},
+		{"[^%w]seguidor", "[^%w]instagram", {"venda", "venta"}, {antispam.hasPriceMention}},
 	}
 
 function antispam.checkCollection(setList, strLower, original_str, emojiPercent)
 	strLower = " "..strLower.." "
-	
-	for a, set in pairs(setList) do  
+
+	for a, set in pairs(setList) do 
 		local ok = 1
 		local info = "Matched collection "..a..": ["
 		for _, elem in pairs(set) do  
@@ -333,40 +372,6 @@ function antispam.remove_accents(str)
 end
 
 
-
-function antispam.hasPriceMention(strLower)
-    local conditions = {
-        "([%d,%.]+)[%$€]",
-        "([%d,%.]+).?[%$€]",
-        "[%$€]([%d,%.]+)",
-        "[%$€]%s*([%d,%.]+)",
-        "([%d,%.]+)[%$€]",
-        "([%d,%.]+)%s*brl",
-        "([%d,%.]+)%s*r",
-
-        "[%$€]([%d,%.]+)",
-        "brl%s*([%d,%.]+)",
-        "r%$%s*([%d,%.]+)",
-        "r%s*([%d,%.]+)",
-
-
-        "usd%s*([%d,%.]+)",
-        "euro?%s*([%d,%.]+)",
-        "([%d,%.]+)%s*usd",
-        "([%d,%.]+)%s*euro?",
-        "%-%s([%d,%.]+)",
-        "$:%s*([%d,%.]+)",
-    
-    }
-
-    for a,c in pairs(conditions) do 
-        if strLower:match(c) and strLower:match("%d") then 
-            return true, c
-        end
-    end
-    
-    return false
-end
 
 function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local cryptoKeywords = {
