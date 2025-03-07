@@ -3,30 +3,24 @@ local antispam = dofile("antispam.lua")
 
 local tgMsg = {
     text = [[
-🔹Venta de Seguidores Instagram. 📷
+Spam found: 
+🌙100 SUB ART RAFFLE! 🌙
+- Follow me in all social media (Bluesky and Twitter).
+- Comment (SFW ref).
+- Share this Post with another group or channel
 
+🥇 The PRIZE will be an Icon, preferably in the style indicated
+(ends within 24hrs) 
+GOOD LUCK!
 
-5.000 = $10000 / 10 usdt✅
-10.000 = $18000 / 18 usdt✅
-15.000 = $24000 / 24 usdt✅
-20.000 = $30000 / 30 usdt✅
+🌙SORTEIO DE 100 INSCRITOS! 🌙
+- Me siga em todas as redes sociais (Twiiter e Bluesky).
+- Comente seu Ref Sheet (SFW ref).
+- Compartilhe esse post em outro grupo ou canal
 
-🔴 Instagram Likes. 📷
-
- 5.000 = $5000 / 5 usdt✅
-10.000 = $ 7000 / 7 usdt✅
-20.000 = $13000 / 13 usdt✅
-30.000 = $18000 / 18 usdt✅
-40.000 = $27000 / 27 usdt✅
-50.000 = $35000 / 35 usdt✅
-
-💰Payment : ARS, BTC, LTC, UDST, PIX 🧩🧩🧩
-
-Consultar por otras redes sociales como tiktok, Twitter y más. 📱📱📱📱📱
-
-Tiempo de llegada | 1min - 24h. 
-
-CONTACTO/REFERENCIAS
+🥇 A RECOMPENSA será um Icon, no estilo indicado de preferência
+(fecha em 24hrs) 
+BOA SORTE!
 ]],
     entities = {}
 }
