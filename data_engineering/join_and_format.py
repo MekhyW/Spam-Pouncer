@@ -20,26 +20,27 @@ def main(spam_path, clear_path, output_path):
     result = []
     for text in df_spam['text']:
         entry = {
-            "messages": [
-                {"role": "system", "content": CLASSIFIER_PROMPT},
-                {"role": "user", "content": text},
-                {"role": "model", "content": "spam"}
+            "systemInstruction": {"role": "system", "parts": [{"text": CLASSIFIER_PROMPT}]},
+            "contents": [
+                {"role": "user", "parts": [{"text": text}]},
+                {"role": "model", "parts": [{"text": "spam"}]}
             ]
         }
         result.append(entry)
     for text in df_clear['text']:
         entry = {
-            "messages": [
-                {"role": "system", "content": CLASSIFIER_PROMPT},
-                {"role": "user", "content": text},
-                {"role": "model", "content": "clear"}
+            "systemInstruction": {"role": "system", "parts": [{"text": CLASSIFIER_PROMPT}]},
+            "contents": [
+                {"role": "user", "parts": [{"text": text}]},
+                {"role": "model", "parts": [{"text": "clear"}]}
             ]
         }
         result.append(entry)
     random.shuffle(result)
     with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+        for entry in result:
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
     logging.info(f"Created {len(result)} entries in {output_path}")
 
 if __name__ == "__main__":
-    main("data/spam.parquet", "data/clear.parquet", "data/dataset_formatted.json")
+    main("data/spam.parquet", "data/clear.parquet", "data/dataset_formatted.jsonl")
