@@ -1,18 +1,22 @@
 import functions_framework
 from flask import Flask, jsonify, Request
 import os
-from google.cloud import aiplatform
+from google import genai
+from google.genai import types
 import hmac
 import hashlib
 
 app = Flask(__name__)
 
 CLASSIFIER_PROMPT = """You are a spam classifier, specialized in distinguishing normal announcements and conversation from monetary scams, cryptocurrency/NFT scams, illegal content and fraudulent schemes. Your task is to classify a message as spam or clear (not spam)."""
+TEMPERATURE = 1
+TOP_P = 0.95
+MAX_OUTPUT_TOKENS = 8192
 
 API_KEY = os.environ.get("API_KEY")
 PROJECT_ID = os.environ.get("PROJECT_ID")
 LOCATION = os.environ.get("LOCATION")
-ENDPOINT_ID = "6279747412344963072"
+MODEL_ENDPOINT_ID = "6279747412344963072"
 PORT = int(os.environ.get("PORT", 8080))
 
 def authenticate_request(request: Request) -> bool:
@@ -29,29 +33,13 @@ def authenticate_request(request: Request) -> bool:
     return hmac.compare_digest(received_signature, expected_signature)
 
 def predict_spam(text):
-    """Make a prediction using the classifier model"""
-    request_body = {
-        "systemInstruction": {
-            "role": "system",
-            "parts": [{"text": CLASSIFIER_PROMPT}]
-        },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": text}]
-            }
-        ]
-    }
-    endpoint = aiplatform.Endpoint(f"projects/{PROJECT_ID}/locations/{LOCATION}/endpoints/{ENDPOINT_ID}")
-    response = endpoint.predict(instances=[request_body])
-    prediction = response.predictions[0]
-    if isinstance(prediction, dict) and "contents" in prediction:
-        for content in prediction["contents"]:
-            if content.get("role") == "model" and content.get("parts"):
-                for part in content["parts"]:
-                    if "text" in part:
-                        return part["text"].strip()
-    return prediction
+    """Make a prediction using the Gemini classifier model"""
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
+    model = f"projects/{PROJECT_ID}/locations/{LOCATION}/endpoints/{MODEL_ENDPOINT_ID}"
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=text)]),]
+    generate_content_config = types.GenerateContentConfig(temperature=TEMPERATURE, top_p=TOP_P, max_output_tokens=MAX_OUTPUT_TOKENS, response_modalities=["TEXT"], system_instruction=[types.Part.from_text(text=CLASSIFIER_PROMPT)],)
+    response = client.models.generate_content(model=model, contents=contents, config=generate_content_config,)
+    return response.text.strip()
 
 @functions_framework.http
 def classify_text(request):
@@ -67,10 +55,6 @@ def classify_text(request):
         text = request_json["text"]
     except Exception as e:
         return jsonify({"error": f"Invalid request: {str(e)}"}), 400
-    try:
-        aiplatform.init(project=PROJECT_ID, location=LOCATION)
-    except Exception as e:
-        return jsonify({"error": f"Failed to initialize Vertex AI: {str(e)}"}), 500
     try:
         result = predict_spam(text)
         return jsonify({"result": result}), 200
