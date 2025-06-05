@@ -44,7 +44,30 @@ function is_valid_url(url)
     end
 end
 
-local function contains_link(s)
+local scammertld = {
+	"com",
+	"tk",
+	"buzz",
+	"xyz",
+	"top",
+	"ga",
+	"ml",
+	"info",
+	"cf",
+	"gq",
+	"icu",
+	"wang",
+	"live",
+	"net",
+	"cn",
+	"online",
+	"host",
+	"org",
+	"us",
+	"ru",
+	"to",
+}
+function antispam.contains_link(s)
     -- Pattern to match URLs with http/https
     local pattern1 = "https?://[%w-_%.%?%.:/%+=&]+"
     -- Pattern to match URLs without http/https (e.g., example.com)
@@ -56,8 +79,15 @@ local function contains_link(s)
     	local from,to = string.find(s, pattern2)
     	if from then   
     		local url = s:sub(from, to)
-    		return is_valid_url(url)
+    		if is_valid_url(url) then  
+    			return true
+    		end
     	end
+    	for i,b in pairs(scammertld) do
+	    	if s:match("([a-z0-9-])%."..b) then  
+	    		return true
+	    	end
+	    end
         return false
     end
 end
@@ -135,7 +165,7 @@ function antispam.classifyMessageDanger(msg)
 	return false, "safe", result
 end
 
-function antispam.checkInnerElement(elem, strLower, original_str)
+function antispam.checkInnerElement(elem, strLower, original_str, dbg)
 	local info = ""
 	if type(elem) == 'string' then 
 		if not strLower:find(elem) then
@@ -143,6 +173,7 @@ function antispam.checkInnerElement(elem, strLower, original_str)
 		end
 		info = info .. "Matched "..elem
 	elseif type(elem) == 'table' then 
+		if dbg then print("is tbl") end
 		for _, orElem in pairs(elem) do  
 			if type(orElem) == 'string' then 
 				if strLower:find(orElem) then 
@@ -150,10 +181,13 @@ function antispam.checkInnerElement(elem, strLower, original_str)
 				end
 			else 
 				local useStr = strLower
-				if orElem == contains_link  or orElem == antispam.hasPriceMention  then  
+				if orElem == antispam.contains_link  or orElem == antispam.hasPriceMention  then  
 					useStr = original_str
+					if dbg then print("original pls or") end
 				end
+				if dbg then print("validate or") end
 				local res = orElem(useStr)
+				if dbg then print("is tbl"..tostring(res)) end
 				if res == 1 or res == true then  
 					return 1, orElem
 				end
@@ -162,7 +196,7 @@ function antispam.checkInnerElement(elem, strLower, original_str)
 		return 0
 	else 
 		local useStr = strLower
-		if elem == contains_link or elem == antispam.hasPriceMention then  
+		if elem == antispam.contains_link or elem == antispam.hasPriceMention then  
 			useStr = original_str
 		end
 		local res = elem(useStr)
@@ -176,16 +210,18 @@ end
 
 local cryptoCollection = { 
 		{"[^%w]airdrop", "[^%w]crypto"},
-		{"airdrop", contains_link},
+		{"airdrop", antispam.contains_link},
 		{{"[^%w]bitcoin", "[^%w]btc"}, "cashout"},
 		{"[^%w]nft", "[^%w]reward", antispam.hasPriceMention},
-		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", contains_link},
+		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", antispam.contains_link},
+		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction"}, {antispam.contains_link}},
 
 	}
 
 
 local scamCollection = { 
 		{"[^%w]girl", "[^%w]fuck", "[^%w]click", {antispam.contains_link}},
+		{"[^%w]fuck", "[^%w]pussy", {antispam.contains_link}},
 		{"[^%w]profit[^%w]", "[^%w]contact[^%w]", antispam.hasPriceMention},
 		{"[^%w]earning[^%w]", "[^%w]effortless", antispam.hasPriceMention},
 		{"[^%w]invest[^%w]", "[^%w]earn[^%w]", antispam.hasPriceMention},
@@ -193,27 +229,28 @@ local scamCollection = {
 		{"[^%w]retorno[^%w]", "[^%w]dinheiro[^%w]", antispam.hasPriceMention},
 		{"[^%w]retorno[^%w]", "[^%w]verificado[^%w]", "[^%w]investidor", antispam.hasPriceMention},
 		{"[^%w]day trade[^%w]", "[^%w]transfiro[^%w]", antispam.hasPriceMention},
-		{"[^%w]honest", "[^%w]invest", {antispam.hasPriceMention, contains_link}},
-		{"[^%w]honest", "[^%w]invest", {antispam.hasPriceMention, contains_link}},
+		{"[^%w]honest", "[^%w]invest", {antispam.hasPriceMention, antispam.contains_link}},
+		{"[^%w]honest", "[^%w]invest", {antispam.hasPriceMention, antispam.contains_link}},
 		{"[^%w]social media", {"[^%w]crypto", "[^%w]paypal"}, {antispam.hasPriceMention}},
 		{"[^%w]instagram", {"[^%w]verified", "[^%w]follower"}, "instant", {antispam.hasPriceMention}},
 		{"[^%w]fuck", "[^%w]hot", {"[^%w]join", "[^%w]link"}, {antispam.contains_link}},
-		{"[^%w]crypto", "[^%w]transaction", {"[^%w]free", "[^%w]buy"}, {antispam.contains_link}},
 		{"[^%w]dinheiro", "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
 		{"[^%w]seguidor", "[^%w]instagram", {"venda", "venta"}, {antispam.hasPriceMention}},
 	}
 
-function antispam.checkCollection(setList, strLower, original_str, emojiPercent)
+function antispam.checkCollection(setList, strLower, original_str, emojiPercent, dbg)
 	strLower = " "..strLower.." "
-
+	if dbg then print("scam coll: "..strLower..debug.traceback()) end
 	for a, set in pairs(setList) do 
 		local ok = 1
 		local info = "Matched collection "..a..": ["
 		for _, elem in pairs(set) do  
 			
-			ok , match = antispam.checkInnerElement(elem, strLower, original_str)
+			ok , match = antispam.checkInnerElement(elem, strLower, original_str, dbg)
+			if dbg then print("Inner element "..ok..' is '..tostring(elem)) end
 			info = info..tostring(match)..','
 			if ok == 0 then  
+				if dbg then print("NOOO :9", original_str)  end
 				break
 			end
 		end
@@ -222,7 +259,7 @@ function antispam.checkCollection(setList, strLower, original_str, emojiPercent)
 		end
 	end
 
-	if emojiPercent > 0.65 and contains_link(original_str) and original_str:find("🫰") then 
+	if emojiPercent > 0.65 and antispam.contains_link(original_str) and original_str:find("🫰") then 
 		return 1, "Emoji percent, found emoji and has link"
 	end
 	return 0, ""
@@ -378,7 +415,8 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 		"airdrop",
 		"btc",
 		"ton",
-		"usdt"
+		"usdt",
+		"crypto"
 	}
 	
 	strLower = " "..strLower.." "
@@ -410,7 +448,6 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	if emojiPercent > 0.7 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
 		return 1, hasMentionOf.." and has emoji or bot mention"
 	end
-
 	return antispam.checkCollection(cryptoCollection, strLower, original_str, emojiPercent)
 end
 
