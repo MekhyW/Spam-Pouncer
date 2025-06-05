@@ -66,6 +66,8 @@ local scammertld = {
 	"us",
 	"ru",
 	"to",
+	"one",
+	"one1",
 }
 function antispam.contains_link(s)
     -- Pattern to match URLs with http/https
@@ -90,6 +92,34 @@ function antispam.contains_link(s)
 	    end
         return false
     end
+end
+
+
+function antispam.hasPhoneNumber(str)
+	if str:match("%+%d+") then 
+		return 1
+	end
+	return 0
+end
+
+function antispam.hasUserMention(str)
+	local name1 = str:match("@([a-zA-Z0-9_]+)")
+	if name1 then 
+		return 1, name1
+	end
+	return 0
+end
+
+function antispam.hasBotMention(str)
+	local name1 = str:match("@([a-zA-Z0-9_]+)bot")
+	if name1 then 
+		return 1, name1
+	end
+	name1 = str:match("t%.me/([a-zA-Z0-9_]+)bot")
+	if name1 then 
+		return 1, name1
+	end
+	return 0, nil
 end
 
 
@@ -209,23 +239,28 @@ end
 
 
 local cryptoCollection = { 
+		{"investment", antispam.hasPriceMention, antispam.contains_link},
 		{"[^%w]airdrop", "[^%w]crypto"},
 		{"airdrop", antispam.contains_link},
 		{{"[^%w]bitcoin", "[^%w]btc"}, "cashout"},
 		{"[^%w]nft", "[^%w]reward", antispam.hasPriceMention},
 		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", antispam.contains_link},
-		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction"}, {antispam.contains_link}},
-
+		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction", "coin"}, {antispam.contains_link}},
+		{"opensea",  antispam.contains_link},
+		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "fast", "hurry", "usdt", "btc"}, {antispam.contains_link, "claim", "free", "success", "whale"}},
+		{"[^%w]crypto", {"[^%w]coin", antispam.hasPriceMention,  "usdt", "wallet", "profit"}, {"[^%w]channel", antispam.hasUserMention, antispam.contains_link, "success"}}
 	}
 
 
 local scamCollection = { 
+		{"xorbxbot"},
+		{{"[^%w]santander", "[^%w]bradesco", "[^%w]nubank"}, {antispam.contains_link}, "credito"},
 		{"[^%w]girl", "[^%w]fuck", "[^%w]click", {antispam.contains_link}},
 		{"[^%w]fuck", "[^%w]pussy", {antispam.contains_link}},
 		{"[^%w]profit[^%w]", "[^%w]contact[^%w]", antispam.hasPriceMention},
 		{"[^%w]earning[^%w]", "[^%w]effortless", antispam.hasPriceMention},
-		{"[^%w]invest[^%w]", "[^%w]earn[^%w]", antispam.hasPriceMention},
-		{"[^%w]invest[^%w]", "[^%w]profit[^%w]", antispam.hasPriceMention},
+		{"[^%w]invest[^%w]",  antispam.hasPriceMention},
+		{"[^%w]invest[^%w]", {"[^%w]profit[^%w]", "[^%w]earn[^%w]", "trading"}, antispam.hasPriceMention},
 		{"[^%w]retorno[^%w]", "[^%w]dinheiro[^%w]", antispam.hasPriceMention},
 		{"[^%w]retorno[^%w]", "[^%w]verificado[^%w]", "[^%w]investidor", antispam.hasPriceMention},
 		{"[^%w]day trade[^%w]", "[^%w]transfiro[^%w]", antispam.hasPriceMention},
@@ -234,20 +269,23 @@ local scamCollection = {
 		{"[^%w]social media", {"[^%w]crypto", "[^%w]paypal"}, {antispam.hasPriceMention}},
 		{"[^%w]instagram", {"[^%w]verified", "[^%w]follower"}, "instant", {antispam.hasPriceMention}},
 		{"[^%w]fuck", "[^%w]hot", {"[^%w]join", "[^%w]link"}, {antispam.contains_link}},
-		{"[^%w]dinheiro", "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
+		{{"[^%w]dinheiro", antispam.hasPriceMention}, "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
 		{"[^%w]seguidor", "[^%w]instagram", {"venda", "venta"}, {antispam.hasPriceMention}},
+		{"[^%w]saque", "[^%w]trade", antispam.hasPriceMention},
+		{{antispam.hasPriceMention, antispam.contains_link}, {"netflix", "prime"}, {"premium", "sell", "crack"}}
 	}
+
 
 function antispam.checkCollection(setList, strLower, original_str, emojiPercent, dbg)
 	strLower = " "..strLower.." "
-	if dbg then print("scam coll: "..strLower..debug.traceback()) end
+	if dbg then print("scam coll: ") end
 	for a, set in pairs(setList) do 
 		local ok = 1
 		local info = "Matched collection "..a..": ["
 		for _, elem in pairs(set) do  
 			
 			ok , match = antispam.checkInnerElement(elem, strLower, original_str, dbg)
-			if dbg then print("Inner element "..ok..' is '..tostring(elem)) end
+			if dbg then print("Inner element "..ok..' is '..tostring(elem).." on") end
 			info = info..tostring(match)..','
 			if ok == 0 then  
 				if dbg then print("NOOO :9", original_str)  end
@@ -366,28 +404,44 @@ function antispam.fancyReplacer(txt)
 
 end
 local accent_map = {
-        ['áàãâä'] = 'a', ['ÁÀÃÂÄ'] = 'A',
-        ['éèêë'] = 'e', ['ÉÈÊË'] = 'E',
-        ['íìîï'] = 'i', ['ÍÌÎÏ'] = 'I',
-        ['óòõôö'] = 'o', ['ÓÒÕÔÖ'] = 'O',
-        ['úùûü'] = 'u', ['ÚÙÛÜ'] = 'U',
-        ['ç'] = 'c', ['Ç'] = 'C',
-        ['ñ'] = 'n', ['Ñ'] = 'N',
-        [".,;/\\|?!~*"] = " ",
-
-
-	    ["Т"] = "T",
-	    ["Е"] = "E",
-	    ["е"] = "e", 
-	    ["р"] = "r", 
-	    ["а"] = "a", 
-	    ["о"] = "o", 
-	    ["в"] = "v", 
-	    ["А"] = "a",  
-
-
-
+-- Standard accented characters
+    ['áàãâä'] = 'a', ['ÁÀÃÂÄ'] = 'A',
+    ['éèêë'] = 'e', ['ÉÈÊË'] = 'E',
+    ['íìîï'] = 'i', ['ÍÌÎÏ'] = 'I',
+    ['óòõôö'] = 'o', ['ÓÒÕÔÖ'] = 'O',
+    ['úùûü'] = 'u', ['ÚÙÛÜ'] = 'U',
+    ['ç'] = 'c', ['Ç'] = 'C',
+    ['ñ'] = 'n', ['Ñ'] = 'N',
+    
+    -- Cyrillic characters that look like Latin (common in spam)
+    ['е'] = 'e', ['Е'] = 'E',  -- Cyrillic 'е' (U+0435) vs Latin 'e'
+    ['а'] = 'a', ['А'] = 'A',  -- Cyrillic 'а' (U+0430)
+    ['о'] = 'o', ['О'] = 'O',  -- Cyrillic 'о' (U+043E)
+    ['с'] = 'c', ['С'] = 'C',  -- Cyrillic 'с' (U+0441)
+    ['р'] = 'p', ['Р'] = 'P',  -- Cyrillic 'р' (U+0440)
+    ['х'] = 'x', ['Х'] = 'X',  -- Cyrillic 'х' (U+0445)
+    ['у'] = 'y', ['У'] = 'Y',  -- Cyrillic 'у' (U+0443)
+    ['м'] = 'm', ['М'] = 'M',  -- Cyrillic 'м' (U+043C)
+    ['т'] = 't', ['Т'] = 'T',  -- Cyrillic 'т' (U+0442)
+    ['в'] = 'b', ['В'] = 'B',  -- Cyrillic 'в' (U+0432) - often looks like B
+    
+    -- Mathematical bold script characters
+    ["𝘄"] = "w", ["𝗮"] = "a", ["𝘀"] = "s", ["𝗼"] = "o", ["𝗳"] = "f", 
+    ["𝗿"] = "r", ["𝗶"] = "i", ["𝗱"] = "d", ["𝘁"] = "t", ["𝗻"] = "n",
+    ["𝘃"] = "v", ["𝗲"] = "e", ["𝗯"] = "b", ["𝗰"] = "c", ["𝗸"] = "k",
+    ["𝗽"] = "p", ["𝘆"] = "y", ["𝗹"] = "l", ["𝗺"] = "m", ["𝘂"] = "u",
+    
+    -- Punctuation normalization
+    ["，"] = ",", ["．"] = ".", ["；"] = ";", ["："] = ":", 
+    ["？"] = "?", ["！"] = "!", ["（"] = "(", ["）"] = ")",
+    ["“"] = '"', ["”"] = '"', ["‘"] = "'", ["’"] = "'",
+    
+    -- Zero-width spaces and other invisibles
+    ["\226\128\139"] = "", -- Zero-width space
+    ["\226\128\140"] = "", -- Other zero-width characters
+    ["\194\160"] = " ",    -- Non-breaking space
 }
+
 
 function antispam.remove_accents(str)
     local normalized_str = ""
@@ -408,17 +462,15 @@ function antispam.remove_accents(str)
     return a
 end
 
-
-
 function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 	local cryptoKeywords = {
 		"airdrop",
 		"btc",
 		"ton",
 		"usdt",
-		"crypto"
+		"opensea",
+		"crypto",
 	}
-	
 	strLower = " "..strLower.." "
 	str = " "..str.." "
 	local hasMentionOf = ""
@@ -432,6 +484,16 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 			break
 		end
 	end
+
+	if str:match("[^%w]%$([A-Z]+)[^%w]") then 
+		return 1, hasMentionOf.." and mentions directly an crypto currency"
+	end
+
+	local hasBot, botname =  antispam.hasBotMention(strLower)
+	if hasBot == 1 and botname:match("ton") then  
+		return 1
+	end
+
 	if not hasAnuncio then  
 
 		if emojiPercent > 0.65 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
@@ -440,30 +502,12 @@ function antispam.hasCryptoMention(str, strLower, emojiPercent, original_str)
 		return antispam.checkCollection(cryptoCollection, strLower, original_str, emojiPercent)
 	end
 
-	if str:match("[^%w]%$([A-Z]+)[^%w]") then 
-		return 1, hasMentionOf.." and mentions directly an crypto currency"
-	end
-
-
 	if emojiPercent > 0.7 and antispam.hasBotMention(strLower) == 1 and strLower:match("ton") then  
 		return 1, hasMentionOf.." and has emoji or bot mention"
 	end
 	return antispam.checkCollection(cryptoCollection, strLower, original_str, emojiPercent)
 end
 
-function antispam.hasPhoneNumber(str)
-	if str:match("%+%d+") then 
-		return 1
-	end
-	return 0
-end
-
-function antispam.hasBotMention(str)
-	if str:match("@([a-zA-Z0-9_]+)bot") or str:match("t%.me/([a-zA-Z0-9_]+)bot") then 
-		return 1
-	end
-	return 0
-end
 
 function antispam.classifyText(str)
 
@@ -568,5 +612,6 @@ end
 function antispam.frame()
 
 end
+
 
 return antispam

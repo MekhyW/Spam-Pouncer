@@ -12,6 +12,18 @@ local skipped = {
     [19] = true, --lingua nao suportada
     [45] = true, --No text
     [46] = true, --No text
+    [73] = true, --No text
+    [74] = true, --No text
+    [74] = true, --No text
+    [78] = true, --No text
+    [82] = true, --No text
+    [86] = true, -- cyka
+    [89] = true, -- idk man
+    [92] = true, -- sounds generic
+    [102] = true, -- sus
+    [106] = true, -- sus
+    [110] = true, -- sus
+
 }
 for i,msg in pairs(data.messages) do  
     if msg.type == "message" then 
@@ -45,14 +57,20 @@ for i,msg in pairs(data.messages) do
             isDanger, class, breakdown = antispam.classifyMessageDanger(tgMsg)
             print("MESSAGE TYPE="..class)
             print("ID="..i)
+            print('----------------------------------------------')
             print(real)
+            print('----------------------------------------------')
+            print(antispam.remove_accents(real))
+            print('----------------------------------------------')
             print(breakdown)
             print('----------------------------------------------')
             error("Safe message~")
+        else  
+            print("ok: "..i)
         end
     end
 
-        if i > 50 then  
+        if i > 229 then  
             break
         end
     end
