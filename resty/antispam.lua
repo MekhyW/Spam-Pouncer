@@ -14,6 +14,7 @@ local function printdbg(...)
 end
 
 
+
 local emoji_pattern = "[\128-\255][\128-\255][\128-\255][\128-\255]?"  -- Basic UTF-8 emoji pattern
 
 local function count_emojis(message)
@@ -100,6 +101,14 @@ function antispam.hasPhoneNumber(str)
 		return 1
 	end
 	return 0
+end
+
+function antispam.isNotFurry(str)
+	local name1 = str:match("ych")
+	if name1 then 
+		return 0, name1
+	end
+	return 1
 end
 
 function antispam.hasUserMention(str)
@@ -247,7 +256,7 @@ local cryptoCollection = {
 		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", antispam.contains_link},
 		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction", "coin"}, {antispam.contains_link}},
 		{"opensea",  antispam.contains_link},
-		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "fast", "hurry", "usdt", "btc"}, {antispam.contains_link, "claim", "free", "success", "whale"}},
+		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "fast", "hurry", "usdt", "btc"}, {antispam.contains_link, "claim", "free", "success", "whale"}, antispam.isNotFurry},
 		{"[^%w]crypto", {"[^%w]coin", antispam.hasPriceMention,  "usdt", "wallet", "profit"}, {"[^%w]channel", antispam.hasUserMention, antispam.contains_link, "success"}}
 	}
 
@@ -272,7 +281,10 @@ local scamCollection = {
 		{{"[^%w]dinheiro", antispam.hasPriceMention}, "[^%w]plataforma", {"[^%w]ganhe", "[^%w]ganhei"}, {antispam.contains_link}},
 		{"[^%w]seguidor", "[^%w]instagram", {"venda", "venta"}, {antispam.hasPriceMention}},
 		{"[^%w]saque", "[^%w]trade", antispam.hasPriceMention},
-		{{antispam.hasPriceMention, antispam.contains_link}, {"netflix", "prime"}, {"premium", "sell", "crack"}}
+		{{antispam.hasPriceMention, antispam.contains_link}, {"netflix", "prime"}, {"premium", "sell", "crack"}},
+		{"[a-z0-9]bet[a-z0-9]", "download", antispam.contains_link},
+		{"free", antispam.hasPriceMention, antispam.hasBotMention, {"deposit", "simple"} },
+		{antispam.hasPriceMention, antispam.hasBotMention, "grab", "slot", {"fate", "flip", "luck", "🍀"} }
 	}
 
 
@@ -547,6 +559,15 @@ function antispam.onTextReceive(msg)
 			local str = (msg.text or msg.description or msg.caption)
 			print(str)
 			local chatid = msg.chat and msg.chat.id or msg.from.id
+
+			local keyb = {}
+		    keyb[1] = {}
+		    keyb[2] = {}
+		    keyb[1][1] = { text = "Falso positivo", callback_data = "delpls"} 
+		    keyb[2][1] = { text = "Apagar spam e banir", callback_data = "banspam:"..msg.message_id..":"..msg.from.id} 
+		    local kb = cjson.encode({inline_keyboard = keyb })
+			bot.sendMessage(chatid, "Encontrado spam do tipo "..class.."\n"..breakdown, "HTML", true, false, msg.message_id, kb)
+
 			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid)
 			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
 			if not res.ok then  
@@ -564,6 +585,15 @@ function antispam.onPhotoReceive(msg)
 			local str = (msg.text or msg.description or msg.caption)
 			print(str)
 			local chatid = msg.chat and msg.chat.id or msg.from.id
+
+			local keyb = {}
+		    keyb[1] = {}
+		    keyb[2] = {}
+		    keyb[1][1] = { text = "Falso positivo", callback_data = "delpls"} 
+		    keyb[2][1] = { text = "Apagar spam e banir", callback_data = "banspam:"..msg.message_id..":"..msg.from.id} 
+		    local kb = cjson.encode({inline_keyboard = keyb })
+			bot.sendMessage(chatid, "Encontrado spam do tipo "..class.."\n"..breakdown, "HTML", true, false, msg.message_id, kb)
+
 			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid )
 			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
 			if not res.ok then  
@@ -581,11 +611,35 @@ function antispam.onDocumentReceive(msg)
 			local str = (msg.text or msg.description or msg.caption)
 			print(str)
 			local chatid = msg.chat and msg.chat.id or msg.from.id
+
+			local keyb = {}
+		    keyb[1] = {}
+		    keyb[2] = {}
+		    keyb[1][1] = { text = "Falso positivo", callback_data = "delplsno"} 
+		    keyb[2][1] = { text = "Apagar spam e banir", callback_data = "banspam:"..msg.message_id..":"..msg.from.id} 
+		    local kb = cjson.encode({inline_keyboard = keyb })
+			bot.sendMessage(chatid, "Encontrado spam do tipo "..class.."\n"..breakdown, "HTML", true, false, msg.message_id, kb)
+
 			bot.sendMessage(5146565303, "Encontrado spam do tipo "..class.."\n"..breakdown..'\nNo chat: '..chatid)
 			local res = bot.forwardMessage(5146565303, msg.from.id, false, msg.message_id)
 			if not res.ok then  
 				bot.sendMessage(5146565303, "Spam found: \n"..str)
 			end
+		end
+	end
+end
+
+function antispam.onCallbackQueryReceive(msg)
+	if msg.message then
+		if msg.data:match("banspam:(.-):(.-)") then
+			local msgid, usr =  msg.data:match("banspam:(.-):(.-)")
+			deploy_deleteMessage(msg.message.chat.id, tonumber(msgid))
+			deploy_deleteMessage(msg.message.chat.id, msg.message.message_id)
+			deploy_answerCallbackQuery(msg.id, "Please solve the captcha :D", "true")
+			bot.banChatMember(msg.chat.id, tonumber(usr), 0, true)
+		elseif msg.data == "delplsno" then  
+			deploy_deleteMessage(msg.message.chat.id, msg.message.message_id)
+			deploy_answerCallbackQuery(msg.id, "Foi mal ae", "true")
 		end
 	end
 end

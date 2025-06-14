@@ -25,6 +25,10 @@ local skipped = {
     [110] = true, -- sus
 
 }
+
+local safe = {
+    [114] = true
+}
 for i,msg in pairs(data.messages) do  
     if msg.type == "message" then 
         local real = ""
@@ -52,7 +56,7 @@ for i,msg in pairs(data.messages) do
         if not skipped[i] then
 
         local isDanger, class, breakdown = antispam.classifyMessageDanger(tgMsg)
-        if not isDanger then  
+        if (not safe[i] and not isDanger) or (safe[i] and isDanger) then  
             antispam.DEBUG = true
             isDanger, class, breakdown = antispam.classifyMessageDanger(tgMsg)
             print("MESSAGE TYPE="..class)

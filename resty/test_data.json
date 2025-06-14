@@ -12852,6 +12852,37 @@
      "text": "Grab your $500 bonus today! 🎁\nDon't miss out — use the promo code and start playing smarter. 💸\nEasy start, real rewards.\nJoin @xorbxbot and make your first move now!"
     }
    ]
+  },
+  {
+   "id": 230,
+   "type": "message",
+   "date": "2025-03-04T16:36:42",
+   "date_unixtime": "1741117002",
+   "from": "evil",
+   "from_id": "user780875868",
+   "forwarded_from": ".",
+   "text": "Hey… snag a $500 reward totally free 🎉💰\nJust enter the promo code — super simple! No deposit required, real prizes from the get-go. Chat with @CoinRider_bot — it's legit and hassle-free 😎✨",
+   "text_entities": [
+    {
+     "type": "plain",
+     "text": "Hey… snag a $500 reward totally free 🎉💰\nJust enter the promo code — super simple! No deposit required, real prizes from the get-go. Chat with @CoinRider_bot — it's legit and hassle-free 😎✨"
+    }
+   ]
+  },{
+   "id": 230,
+   "type": "message",
+   "date": "2025-03-04T16:36:42",
+   "date_unixtime": "1741117002",
+   "from": "evil",
+   "from_id": "user780875868",
+   "forwarded_from": ".",
+   "text": "Spam found: Ok Guys last slot for the pride month YCH to be done in time for pride month, and I will close it for the month! Fast turnaround time, done till tuesday Sticker version comes for free! PM me to claim 💌@artisticdot",
+   "text_entities": [
+    {
+     "type": "plain",
+     "text": "Spam found: Ok Guys last slot for the pride month YCH to be done in time for pride month, and I will close it for the month! Fast turnaround time, done till tuesday Sticker version comes for free! PM me to claim 💌@artisticdot"
+    }
+   ]
   }
  ]
 }
