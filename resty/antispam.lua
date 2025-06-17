@@ -15,6 +15,7 @@ end
 
 
 
+
 local emoji_pattern = "[\128-\255][\128-\255][\128-\255][\128-\255]?"  -- Basic UTF-8 emoji pattern
 
 local function count_emojis(message)
@@ -102,10 +103,6 @@ function antispam.hasPhoneNumber(str)
 	end
 	return 0
 end
-
-local furryCollections = {
-	"ych", ""
-}
 
 function antispam.isNotFurry(str)
 	local name1 = str:match("ych")
@@ -251,7 +248,6 @@ function antispam.checkInnerElement(elem, strLower, original_str, dbg)
 end
 
 
-
 local cryptoCollection = { 
 		{"investment", antispam.hasPriceMention, antispam.contains_link},
 		{"[^%w]airdrop", "[^%w]crypto"},
@@ -260,8 +256,8 @@ local cryptoCollection = {
 		{"[^%w]nft", "[^%w]reward", antispam.hasPriceMention},
 		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", antispam.contains_link},
 		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction", "coin"}, {antispam.contains_link}},
-		{{"opensea", "claim"}, {"fast", "hurry", "snag"},  antispam.contains_link, antispam.isNotFurry},
-		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "hurry", "usdt", "btc"}, {antispam.contains_link, "fast", "free", "success", "whale"}, antispam.isNotFurry},
+		{{"opensea", "claim"}, {"fast", "hurry", "snag"},  antispam.contains_link},
+		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "usdt", "btc"}, {"hurry", antispam.contains_link, "fast", "free", "success", "whale"}, antispam.isNotFurry},
 		{"[^%w]crypto", {"[^%w]coin", antispam.hasPriceMention,  "usdt", "wallet", "profit"}, {"[^%w]channel", antispam.hasUserMention, antispam.contains_link, "success"}}
 	}
 
@@ -291,7 +287,6 @@ local scamCollection = {
 		{"free", antispam.hasPriceMention, antispam.hasBotMention, {"deposit", "simple"} },
 		{antispam.hasPriceMention, antispam.hasBotMention, {"grab", "rich", "coin", "lux"}, {"slot", "pocket", "wallet", "slow"}, {"fate", "flip", "luck", "🍀", "💵", "🚀", "🔥"} }
 	}
-
 
 
 function antispam.checkCollection(setList, strLower, original_str, emojiPercent, dbg)
@@ -373,6 +368,7 @@ function antispam.hasActualScam(strLower, original_str, emojiPercent)
 		return antispam.checkCollection(scamCollection,strLower, original_str, emojiPercent)
 	end
 end
+
 function antispam.hasIllegalStuff(strLower)
 	local drugStuff = {
 		"lsd",
