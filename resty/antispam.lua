@@ -215,7 +215,7 @@ function antispam.checkInnerElement(elem, strLower, original_str, dbg)
 		if dbg then print("is tbl") end
 		for _, orElem in pairs(elem) do  
 			if type(orElem) == 'string' then 
-				if strLower:find(orElem) then 
+				if strLower:find(orElem) or original_str:find(orElem) then 
 					return 1, orElem
 				end
 			else 
@@ -284,8 +284,9 @@ local scamCollection = {
 		{{antispam.hasPriceMention, antispam.contains_link}, {"netflix", "prime"}, {"premium", "sell", "crack"}},
 		{"[a-z0-9]bet[a-z0-9]", "download", antispam.contains_link},
 		{"free", antispam.hasPriceMention, antispam.hasBotMention, {"deposit", "simple"} },
-		{antispam.hasPriceMention, antispam.hasBotMention, "grab", "slot", {"fate", "flip", "luck", "🍀"} }
+		{antispam.hasPriceMention, antispam.hasBotMention, {"grab", "rich", "coin", "lux"}, {"slot", "pocket", "wallet", "slow"}, {"fate", "flip", "luck", "🍀", "💵", "🚀", "🔥"} }
 	}
+
 
 
 function antispam.checkCollection(setList, strLower, original_str, emojiPercent, dbg)
