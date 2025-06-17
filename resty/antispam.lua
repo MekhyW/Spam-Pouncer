@@ -103,6 +103,10 @@ function antispam.hasPhoneNumber(str)
 	return 0
 end
 
+local furryCollections = {
+	"ych", ""
+}
+
 function antispam.isNotFurry(str)
 	local name1 = str:match("ych")
 	if name1 then 
@@ -247,6 +251,7 @@ function antispam.checkInnerElement(elem, strLower, original_str, dbg)
 end
 
 
+
 local cryptoCollection = { 
 		{"investment", antispam.hasPriceMention, antispam.contains_link},
 		{"[^%w]airdrop", "[^%w]crypto"},
@@ -255,8 +260,8 @@ local cryptoCollection = {
 		{"[^%w]nft", "[^%w]reward", antispam.hasPriceMention},
 		{{"[^%w]bitcoin", "[^%w]btc"}, "[^%w]usdt", antispam.contains_link},
 		{"[^%w]crypto", {"[^%w]free", "[^%w]buy", "transaction", "coin"}, {antispam.contains_link}},
-		{"opensea",  antispam.contains_link},
-		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "fast", "hurry", "usdt", "btc"}, {antispam.contains_link, "claim", "free", "success", "whale"}, antispam.isNotFurry},
+		{{"opensea", "claim"}, {"fast", "hurry", "snag"},  antispam.contains_link, antispam.isNotFurry},
+		{{"crypto","claim"}, {"nft", "[^%w]eth[^%w]", "ethereum", "hurry", "usdt", "btc"}, {antispam.contains_link, "fast", "free", "success", "whale"}, antispam.isNotFurry},
 		{"[^%w]crypto", {"[^%w]coin", antispam.hasPriceMention,  "usdt", "wallet", "profit"}, {"[^%w]channel", antispam.hasUserMention, antispam.contains_link, "success"}}
 	}
 
@@ -338,6 +343,7 @@ function antispam.hasActualScam(strLower, original_str, emojiPercent)
 		"trading",
 		"invest",
 		"investidora",
+		"trump",
 	}
 
 	strLower = " "..strLower.." "
@@ -350,6 +356,11 @@ function antispam.hasActualScam(strLower, original_str, emojiPercent)
 		end
 	end
 
+	local hasBot, botname =  antispam.hasBotMention(strLower)
+	if emojiPercent > 0.5 and hasBot then  
+		return 1, "too much emojis,  and has bot: "..scamCount
+	end
+ 
 	if scamCount <= 3 then  
 		return antispam.checkCollection(scamCollection, strLower, original_str, emojiPercent)
 	end

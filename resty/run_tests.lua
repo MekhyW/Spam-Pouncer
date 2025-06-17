@@ -27,7 +27,8 @@ local skipped = {
 }
 
 local safe = {
-    [114] = true
+    [114] = true,
+
 }
 for i,msg in pairs(data.messages) do  
     if msg.type == "message" then 
